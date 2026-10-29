@@ -348,9 +348,14 @@ function stV(){const g=goalsFor(today()),f=(k,l)=>`<label>${l}<input type="numbe
  <textarea id="bk" rows="3" style="display:none;margin-top:8px"></textarea><small style="color:var(--mu);display:block;margin-top:8px">Tip: the installed app saves a backup file to your phone’s Downloads folder every 7 days when you open it. Point a Drive sync app (FolderSync or Autosync) at that folder, filtered to “fitlog-backup-*.json”, to copy it into your Drive folder.</small></div>`}
 async function exp(){const s=JSON.stringify(S);try{const d=await claude.use('downloads');if(d){await d.save({filename:'fitlog-backup-'+today()+'.json',data:s});S.lb=Date.now();persist();render();return}}catch(e){if(e&&e.code==='declined')return}
  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));a.download='fitlog-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();S.lb=Date.now();persist();render();return}catch(e){}const t=$('#bk');t.style.display='block';t.value=s;t.select();alert('Download unavailable here. Copy the text from the box and store it safely.')}
-async function imp(f){if(!f)return;try{const o=JSON.parse(await f.text());if(!o.days)throw 0;const sn=JSON.stringify(S);
- for(const k in o.days)if(!S.days[k]||(o.days[k].u||0)>(S.days[k].u||0)){S.days[k]=o.days[k];dirty.add(k)}
- S.foods=Object.assign({},o.foods,S.foods);S.bw=Object.assign({},o.bw,S.bw);S.lib=Object.assign({},o.lib,S.lib);touch('meta');render();UD=sn;toast('Backup imported and merged')}catch(e){alert('That file is not a valid backup.')}}
+const emptyDay=d=>!d||(!(d.m&&d.m.length)&&!Object.keys((d.wk&&d.wk.ex)||{}).length&&!(d.wk&&(d.wk.note||d.wk.c)));
+async function imp(f){if(!f)return;try{let o=JSON.parse(await f.text());if(o&&o.S&&o.S.days)o=o.S;if(!o||typeof o.days!=='object'||!o.days)throw 0;const sn=JSON.stringify(S);let nd=0,up=0;
+ for(const k in o.days){const a=S.days[k],b=o.days[k];if(!b||typeof b!=='object')continue;
+  if(!a||emptyDay(a)||(b.u||0)>(a.u||0)){if(!a)nd++;else up++;if(!b.m)b.m=[];if(!b.wk)b.wk={ex:{},note:'',c:''};b.u=b.u||Date.now();S.days[k]=b;dirty.add(k)}}
+ S.foods=Object.assign({},o.foods,S.foods);S.bw=Object.assign({},o.bw,S.bw);S.lib=Object.assign({},o.lib,S.lib);
+ if((o.mu||0)>(S.mu||0)||!S.mu){if(o.goals)S.goals=o.goals;if(o.plan)S.plan=o.plan}
+ const gm={};(S.gh||[]).concat(o.gh||[]).forEach(e=>gm[e.d]=e);S.gh=Object.keys(gm).sort().map(d=>gm[d]);
+ touch('meta');render();UD=sn;toast('Imported '+nd+' new day'+(nd===1?'':'s')+(up?', updated '+up:'')+' · '+Object.keys(o.foods||{}).length+' foods')}catch(e){alert('That file is not a valid backup.')}}
 function render(){$('#m').innerHTML=tab==='food'?foodV():tab==='wk'?wkV():tab==='bw'?bwV():tab==='lib'?libV():tab==='pr'?prV():stV();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab))}
 load();render();autoBk();if(!window.claude){gLoad().catch(()=>{});if(DR.on)setTimeout(driveSync,2500)}try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 setInterval(()=>{if(dirty.size)flush()},60000);
