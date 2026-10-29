@@ -303,10 +303,16 @@ try{DR=JSON.parse(localStorage.getItem('fitlog_drive')||'{}')}catch(e){DR={}}
 const drSave=()=>{try{localStorage.setItem('fitlog_drive',JSON.stringify(DR))}catch(e){}};
 function dsched(){clearTimeout(DT);DT=setTimeout(driveSync,30000)}
 function gLoad(){return new Promise((res,rej)=>{if(window.google&&google.accounts)return res();const e=document.createElement('script');e.src='https://accounts.google.com/gsi/client';e.onload=res;e.onerror=()=>rej(new Error('Could not load Google sign-in. Check your connection.'));document.head.appendChild(e)})}
-function gTok(){return gLoad().then(()=>new Promise((res,rej)=>{if(TOK&&Date.now()<TEXP)return res(TOK);
- google.accounts.oauth2.initTokenClient({client_id:GCID,scope:'https://www.googleapis.com/auth/drive.file',
-  callback:r=>{if(r.error)return rej(new Error(r.error));TOK=r.access_token;TEXP=Date.now()+(r.expires_in-60)*1000;res(TOK)},
-  error_callback:e=>rej(new Error(e&&e.type||'sign-in popup was blocked'))}).requestAccessToken({prompt:''})}))}
+function gTok(interactive = false) {
+ return gLoad().then(()=>new Promise((res,rej)=>{
+  if(TOK && Date.now()<TEXP) return res(TOK);
+  // Background sync requests a silent token only; it must never show an account chooser.
+  google.accounts.oauth2.initTokenClient({client_id:GCID,scope:'https://www.googleapis.com/auth/drive.file',
+   callback:r=>{if(r.error||!r.access_token)return rej(new Error(r.error||'Google sign-in failed'));TOK=r.access_token;TEXP=Date.now()+((r.expires_in||3600)-60)*1000;res(TOK)},
+   error_callback:e=>rej(new Error(e&&e.type||'Google sign-in popup was blocked'))
+  }).requestAccessToken({prompt:interactive?'':'none'});
+ }));
+}
 async function gj(url,opt){opt=opt||{};const t=await gTok();opt.headers=Object.assign({Authorization:'Bearer '+t},opt.headers||{});const r=await fetch(url,opt);if(!r.ok)throw new Error('Drive error '+r.status);return opt.raw?r:r.json()}
 async function gFolder(){if(DR.fid)return DR.fid;let j=await gj(DAPI+'files?fields=files(id)&q='+encodeURIComponent("name='"+GFOLDER+"' and mimeType='application/vnd.google-apps.folder' and trashed=false"));
  if(j.files&&j.files[0])DR.fid=j.files[0].id;else{j=await gj(DAPI+'files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:GFOLDER,mimeType:'application/vnd.google-apps.folder'})});DR.fid=j.id}drSave();return DR.fid}
@@ -315,17 +321,28 @@ async function gPut(name,data){const f=await gFolder(),id=await gFind(name);
  if(id){await gj(DUP+'files/'+id+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body:data});return id}
  const b='fl'+Date.now(),body='--'+b+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify({name,parents:[f]})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+data+'\r\n--'+b+'--';
  return (await gj(DUP+'files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body})).id}
-async function driveSync(){if(!DR.on||dbusy||window.claude)return;if(!Object.keys(S.days).length&&!Object.keys(S.foods).length)return;dbusy=true;
- try{const id=await gFind('fitlog-latest.json');
+async function driveSync(interactive=false){
+ if(!DR.on||dbusy||window.claude)return;
+ if(!Object.keys(S.days).length&&!Object.keys(S.foods).length)return;
+ dbusy=true;
+ try{
+  // Only a deliberate user action may request a Google token.
+  if(interactive) await gTok(true);
+  const id=await gFind('fitlog-latest.json');
   if(id){const o=await (await gj(DAPI+'files/'+id+'?alt=media',{raw:1})).json();
-   if(o.days&&Object.keys(o.days).length>Object.keys(S.days).length){DMSG='Your Drive backup has more days than this phone, so I did not overwrite it. Tap Restore from Drive first.';dbusy=false;if(tab==='st')render();return}}
+   if(o.days&&Object.keys(o.days).length>Object.keys(S.days).length){DMSG='Your Drive backup has more days than this device. Restore from Drive before syncing.';return}}
   const data=JSON.stringify(S);await gPut('fitlog-latest.json',data);
   if(!DR.wk||Date.now()-DR.wk>6048e5){await gPut('fitlog-backup-'+today()+'.json',data);DR.wk=Date.now()}
-  DR.last=Date.now();drSave();DMSG=''}
- catch(e){const m=String(e.message);if(m.includes('404')){DR.fid=null;drSave();DMSG='Drive folder not found. It will be recreated on the next sync.'}else{if(!DR.last)DR.on=false;drSave();DMSG='Not synced: '+m+'. Tap Sync now to try again.'}}
- dbusy=false;if(tab==='st'||tab==='food')render()}
-function driveNow(){DR.on=true;drSave();DMSG='';driveSync();render()}
-async function driveRestore(){try{const id=await gFind('fitlog-latest.json');if(!id){alert('No backup in the Drive folder yet.');return}await imp(new Blob([await (await gj(DAPI+'files/'+id+'?alt=media',{raw:1})).text()]))}catch(e){alert('Restore failed: '+e.message)}}
+  DR.last=Date.now();drSave();DMSG='';
+ }catch(e){
+  const m=String(e&&e.message||e);
+  if(m.includes('Google session expired'))DMSG='Google session expired. Tap Sync now to reconnect.';
+  else if(m.includes('404')){DR.fid=null;drSave();DMSG='Drive folder not found. It will be recreated on the next sync.'}
+  else DMSG='Not synced: '+m+'. Tap Sync now to try again.';
+ }finally{dbusy=false;if(tab==='st'||tab==='food')render()}
+}
+function driveNow(){DR.on=true;drSave();DMSG='';driveSync(true);render()}
+async function driveRestore(){try{await gTok(true);const id=await gFind('fitlog-latest.json');if(!id){alert('No backup in the Drive folder yet.');return}await imp(new Blob([await (await gj(DAPI+'files/'+id+'?alt=media',{raw:1})).text()]))}catch(e){alert('Restore failed: '+e.message)}}
 function driveOff(){try{if(TOK)google.accounts.oauth2.revoke(TOK)}catch(e){}TOK=null;DR={};drSave();DMSG='';render()}
 function driveCard(){if(window.claude)return'';
  return `<h3>Google Drive backup</h3><div class="card"><p style="margin:0 0 6px">${DR.on?'Connected · folder “'+GFOLDER+'”':'Not connected'}</p><small style="color:var(--mu)">${DR.last?'Last upload: '+new Date(DR.last).toLocaleString():'Nothing uploaded yet'}${DMSG?'<br><b style="color:var(--wa)">'+esc(DMSG)+'</b>':''}</small>
@@ -395,7 +412,16 @@ async function imp(f){if(!f)return;try{
 function render(){$('#m').innerHTML=tab==='food'?foodV():tab==='wk'?wkV():tab==='bw'?bwV():tab==='lib'?libV():tab==='pr'?prV():stV();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab))}
 load();render();autoBk();if(!window.claude){gLoad().catch(()=>{});if(DR.on)setTimeout(driveSync,2500)}try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 setInterval(()=>{if(dirty.size)flush()},60000);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){const t=today();if(t!==LT){if(cur===LT)cur=t;LT=t}if(dirty.size)flush();autoBk();if(DR.on)driveSync();render()}});
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible'){
+  const t=today();if(t!==LT){if(cur===LT)cur=t;LT=t}
+  if(dirty.size)flush();
+  autoBk();
+  // Tab changes may sync silently but must never launch Google sign-in.
+  if(DR.on)driveSync(false);
+  render();
+ }
+});
 (async()=>{try{if(!window.claude)throw 0;const u=await claude.use('user'),id=u&&await u.id(),db=await claude.use('db');
  if(db&&id){col=db.collection('data/users/'+id);await pull();cloud='synced ✓'}else cloud='off (this device only)'}catch(e){cloud='off (this device only)'}render()})();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
