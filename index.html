@@ -44,11 +44,12 @@ label{font-size:12px;color:var(--mu)}label input,label select{margin-top:3px}
 .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .s{display:grid;grid-template-columns:34px 1fr 16px 1fr 30px;gap:6px;align-items:center;margin-top:6px}.s span{color:var(--mu);font-size:13px}
 #tt{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:496px;margin:auto;background:#262a25;color:#fff;border-radius:12px;padding:10px 14px;display:none;justify-content:space-between;align-items:center;z-index:30}#tt.on{display:flex}#tt button{background:none;border:0;color:#8fe0b0;font-weight:700;font-size:15px;padding:6px}
+.wst{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}.dy{border:1px solid var(--bd);background:var(--cd);color:var(--tx);border-radius:12px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:1px;font:inherit}.dy small{color:var(--mu);font-size:10px}.dy i{width:5px;height:5px;border-radius:50%;background:var(--ac)}.dy.on{background:var(--ac);color:#fff;border-color:var(--ac)}.dy.on small{color:#fff}.dy.on i{background:#fff}.dy.td:not(.on) b{color:var(--ac)}
 .hint{font-size:12px;color:var(--mu);margin-top:6px}.hint b{color:var(--ac)}
 .link{background:none;border:0;color:var(--ac);font-weight:600;padding:8px 0}
 </style></head><body>
 <div id="m"></div><div id="sh" class="sh"></div><div id="tt"></div>
-<nav><button data-t="food" onclick="go('food')"><span>🍽</span>Food</button><button data-t="wk" onclick="go('wk')"><span>🏋</span>Workout</button><button data-t="lib" onclick="go('lib')"><span>📚</span>Exercises</button><button data-t="pr" onclick="go('pr')"><span>📈</span>Progress</button><button data-t="bw" onclick="go('bw')"><span>⚖</span>Weight</button><button data-t="st" onclick="go('st')"><span>⚙</span>Backup</button></nav>
+<nav><button data-t="food" onclick="go('food')"><span>🍽</span>Food</button><button data-t="wk" onclick="go('wk')"><span>🏋</span>Workout</button><button data-t="lib" onclick="go('lib')"><span>📚</span>Library</button><button data-t="pr" onclick="go('pr')"><span>📈</span>Progress</button><button data-t="bw" onclick="go('bw')"><span>⚖</span>Weight</button><button data-t="st" onclick="go('st')"><span>⚙</span>Backup</button></nav>
 <script>
 const $=s=>document.querySelector(s),LS='fitlog_v1';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -73,7 +74,7 @@ function load(){try{const j=JSON.parse(localStorage.getItem(LS));if(j&&j.days)S=
   [['Cable Crunch','Core','Core',3,'10-15'],['Hanging Leg Raise','Core','Core',3,'10-15'],['Pull-ups','Compound','Back',3,'6-10'],['Push-ups','Compound','Chest',3,'10-20'],['Dumbbell Curl','Isolation','Biceps',3,'10-12'],['Dips','Compound','Triceps',3,'8-12'],['Walking (Zone 2)','Cardio','Cardio',1,'30-40']].forEach(a=>{const k=a[0].toLowerCase();if(!S.lib[k])S.lib[k]={n:a[0],ty:a[1],mu:a[2],s:a[3],r:a[4],t:''}})}}
 function touch(k){if(k==='meta')S.mu=Date.now();else S.days[k].u=Date.now();dirty.add(k);
  try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){alert('Phone storage is full or blocked. Export a backup now.')}
- clearTimeout(tm);tm=setTimeout(flush,700)}
+ clearTimeout(tm);tm=setTimeout(flush,700);if(DR.on)dsched()}
 async function flush(){if(!col)return;for(const k of [...dirty]){try{
  if(k==='meta')await col.doc('meta').set({j:JSON.stringify(metaO()),u:S.mu||0});
  else await col.doc('d_'+k).set({j:JSON.stringify(S.days[k]),u:S.days[k].u||0});
@@ -97,33 +98,40 @@ function tot(k){const t={k:0,p:0,c:0,f:0,fi:0};((S.days[k]||{}).m||[]).forEach(x
 function shift(n){const d=new Date(cur+'T00:00');d.setDate(d.getDate()+n);cur=iso(d);render()}
 function go(t){tab=t;render();scrollTo(0,0)}
 function dn(){const d=new Date(cur+'T00:00'),l=d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
- return `<div class="dn"><button onclick="shift(-1)">‹</button><div onclick="cur=today();render()"><b>${cur===today()?'Today':l}</b>${cur===today()?'<br><small style="color:var(--mu)">'+l+'</small>':''}</div><button onclick="shift(1)">›</button></div>`}
+ return `<div class="dn"><button onclick="shift(-1)">‹</button><div onclick="cur=today();render()"><b>${cur===today()?'Today':l}</b>${cur===today()?'<br><small style="color:var(--mu)">'+l+'</small>':''}</div><button onclick="shift(1)">›</button></div>${wstrip()}<div class="row" style="margin:0 0 10px"><button class="sec" onclick="cur=today();render()">Today</button><button class="sec" onclick="$('#dp').showPicker?$('#dp').showPicker():$('#dp').focus()">📅 Pick a date</button></div><input id="dp" type="date" value="${cur}" onchange="if(this.value){cur=this.value;render()}" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px">`}
 function bar(l,v,g,u,big){const pc=Math.min(100,g?v/g*100:0);return `<div class="b${big?' big':''}${v>g*1.05?' over':''}"><div class="bl"><span>${l}</span><b>${N(v)}<small> / ${g} ${u}</small></b></div><div class="bt"><i style="width:${pc}%"></i></div></div>`}
 /* FOOD */
 function foodV(){const t=tot(cur),g=goalsFor(cur),top=Object.entries(S.foods).sort((a,b)=>b[1].cnt-a[1].cnt).slice(0,8);CH=top.map(e=>e[0]);
  const m=(S.days[cur]||{}).m||[];
- return dn()+bkBanner()+`<div class="card">${bar('Calories',t.k,goalK(),'kcal',1)}${bar('Protein',t.p,g.p,'g',1)}<div class="r3">${bar('Carbs',t.c,g.c,'g')}${bar('Fat',t.f,g.f,'g')}${bar('Fiber',t.fi,g.fi,'g')}</div></div>`
+ return dn()+`<div class="card">${bar('Calories',t.k,goalK(),'kcal',1)}${bar('Protein',t.p,g.p,'g',1)}<div class="r3">${bar('Carbs',t.c,g.c,'g')}${bar('Fat',t.f,g.f,'g')}${bar('Fiber',t.fi,g.fi,'g')}</div></div>`
  +(top.length?`<h3>Quick add (your usuals)</h3><div class="ch">${top.map((e,i)=>`<button onclick="chip(${i})">${esc(e[1].n)}<small>${N(e[1].k)} kcal · ${N(e[1].p)}g protein</small></button>`).join('')}</div>`:'')
- +`<h3>Eaten</h3><div class="card">${m.length?m.map((x,i)=>`<div class="it"><div><b>${esc(x.n)}${x.q!=1?' ×'+x.q:''}</b> <small>· ${esc(x.a||'')}</small><br><small>${N(x.k)} kcal · P ${N(x.p)} · C ${N(x.c)} · F ${N(x.f)} · Fiber ${N(x.fi)}</small></div><button class="x" onclick="delMeal(${i})">×</button></div>`).join(''):'<small style="color:var(--mu)">Nothing logged yet. Tap + Add food.</small>'}</div><button class="fab" onclick="openAdd()">+ Add food</button>`}
+ +`<h3>Eaten · tap an entry to edit</h3><div class="card">${m.length?m.map((x,i)=>`<div class="it" onclick="openAdd(${i})"><div><b>${esc(x.n)}${x.q!=1?' ×'+x.q:''}</b> <small>· ${esc(x.a||'')}</small><br><small>${N(x.k)} kcal · P ${N(x.p)} · C ${N(x.c)} · F ${N(x.f)} · Fiber ${N(x.fi)}</small></div><button class="x" onclick="event.stopPropagation();delMeal(${i})">×</button></div>`).join(''):'<small style="color:var(--mu)">Nothing logged yet. Tap + Add food.</small>'}</div>${bkBanner()}<button class="fab" onclick="openAdd()">+ Add food</button>`}
 function mealNow(){const h=new Date().getHours();return h<11?'Breakfast':h<15?'Lunch':h<18?'Snack':'Dinner'}
 function addMeal(x){ens().m.push(x);touch(cur)}
 function chip(i){const f=S.foods[CH[i]];f.cnt++;f.last=Date.now();touch('meta');addMeal({n:f.n,q:1,k:f.k,p:f.p,c:f.c,f:f.f,fi:f.fi,a:mealNow()});render()}
 function delMeal(i){undoable('Food entry removed',()=>{S.days[cur].m.splice(i,1);touch(cur)});render()}
-function openAdd(){const ms=['Breakfast','Lunch','Snack','Pre-workout','Post-workout','Dinner'];
- $('#sh').innerHTML=`<div class="sc"><h3 style="margin-top:0">Add food</h3><input id="fn" placeholder="Food name, e.g. oats" oninput="sug()" autocomplete="off"><div id="sg"></div>
- <div class="g2"><label>Portions<input id="fq" type="number" inputmode="decimal" step="any" value="1"></label><label>Meal<select id="fm">${ms.map(x=>`<option${x===mealNow()?' selected':''}>${x}</option>`).join('')}</select></label></div>
- <div class="g3">${[['fk','Calories'],['fp','Protein g'],['fc','Carbs g'],['ff','Fat g'],['fi','Fiber g']].map(a=>`<label>${a[1]}<input id="${a[0]}" type="number" inputmode="decimal" step="any"></label>`).join('')}</div>
- <small style="color:var(--mu)">Enter values for 1 portion. They’re saved to your food list, so next time just type the first letters.</small>
- <div class="row"><button class="sec" onclick="cls()">Cancel</button><button class="pri" onclick="saveFood()">Add</button></div></div>`;
- $('#sh').className='sh on';sug();setTimeout(()=>$('#fn').focus(),50)}
+function openAdd(ei){ST=[];const ms=['Breakfast','Lunch','Snack','Pre-workout','Post-workout','Dinner'],e=ei>=0?S.days[cur].m[ei]:null,pv=k=>e?Math.round(e[k]/(e.q||1)*1000)/1000:'';
+ $('#sh').innerHTML=`<div class="sc"><h3 style="margin-top:0">${e?'Edit food entry':'Add food'}</h3><input id="fn" value="${e?esc(e.n):''}" placeholder="Food name, e.g. oats" oninput="sug()" autocomplete="off"><div id="sg"></div>
+ <div class="g2"><label>Portions<input id="fq" type="number" inputmode="decimal" step="any" value="${e?e.q:1}"></label><label>Meal<select id="fm">${ms.map(x=>`<option${x===(e?e.a:mealNow())?' selected':''}>${x}</option>`).join('')}</select></label></div>
+ <div class="g3">${[['fk','Calories','k'],['fp','Protein g','p'],['fc','Carbs g','c'],['ff','Fat g','f'],['fi','Fiber g','fi']].map(a=>`<label>${a[1]}<input id="${a[0]}" type="number" inputmode="decimal" step="any" value="${pv(a[2])}"></label>`).join('')}</div>
+ <button class="link" onclick="estFill()">Estimate values from name (e.g. “50 g oats”)</button><div id="stg"></div>${e?'':'<button class="link" onclick="stageAdd()">+ Add another item to this meal</button>'}<small style="color:var(--mu)">Enter values for 1 portion. They’re saved to your food list, so next time just type the first letters.</small>
+ <div class="row"><button class="sec" onclick="cls()">Cancel</button><button class="pri" onclick="saveFood(${e?ei:-1})">${e?'Save changes':'Add'}</button></div></div>`;
+ $('#sh').className='sh on';if(!e){sug();setTimeout(()=>$('#fn').focus(),50)}}
 function cls(){$('#sh').className='sh'}
 function sug(){const q=$('#fn').value.trim().toLowerCase();SG=Object.entries(S.foods).filter(e=>!q||e[0].includes(q)).sort((a,b)=>b[1].cnt-a[1].cnt).slice(0,5);
  $('#sg').innerHTML=SG.map((e,i)=>`<div class="sg" onclick="pick(${i})"><span>${esc(e[1].n)}</span><small>${N(e[1].k)} kcal · ${N(e[1].p)}g P</small></div>`).join('')}
 function pick(i){const f=SG[i][1];$('#fn').value=f.n;$('#fq').value=1;$('#fk').value=f.k;$('#fp').value=f.p;$('#fc').value=f.c;$('#ff').value=f.f;$('#fi').value=f.fi;$('#sg').innerHTML=''}
-function saveFood(){const n=$('#fn').value.trim(),v=id=>+$('#'+id).value||0,q=v('fq')||1;if(!n){$('#fn').focus();return}
- const f={n,k:v('fk'),p:v('fp'),c:v('fc'),f:v('ff'),fi:v('fi')},key=n.toLowerCase(),o=S.foods[key];
- S.foods[key]=Object.assign(f,{cnt:(o?o.cnt:0)+1,last:Date.now()});touch('meta');
- addMeal({n,q,k:f.k*q,p:f.p*q,c:f.c*q,f:f.f*q,fi:f.fi*q,a:$('#fm').value});cls();render()}
+function saveEdit(i){const n=$('#fn').value.trim(),v=id=>+$('#'+id).value||0,q=v('fq')||1;if(!n){$('#fn').focus();return}
+ const f={k:v('fk'),p:v('fp'),c:v('fc'),f:v('ff'),fi:v('fi')},L=S.foods[n.toLowerCase()],a=$('#fm').value;
+ undoable('Entry updated',()=>{const m=S.days[cur].m;m[i]={n,q,k:f.k*q,p:f.p*q,c:f.c*q,f:f.f*q,fi:f.fi*q,a,t:m[i].t};touch(cur);
+  if(L&&['k','p','c','f','fi'].some(x=>L[x]!==f[x])){Object.assign(L,f);touch('meta')}});cls();render()}
+function saveFood(ei){if(ei>=0)return saveEdit(ei);
+ if(!ST.length||$('#fn').value.trim()){const x=fmItem();if(!x)return;ST.push(x)}
+ const a=$('#fm').value;
+ if(ST.length===1){const x=ST[0];addMeal({n:x.n,q:x.q,k:x.k,p:x.p,c:x.c,f:x.f,fi:x.fi,a})}
+ else{const t={k:0,p:0,c:0,f:0,fi:0};ST.forEach(x=>{for(const z in t)t[z]+=x[z]});const nm=($('#cbn')&&$('#cbn').value.trim())||ST.map(x=>x.n).join(' + '),key=nm.toLowerCase(),o=S.foods[key];
+  S.foods[key]=Object.assign({n:nm},t,{cnt:(o?o.cnt:0)+1,last:Date.now()});touch('meta');addMeal({n:nm,q:1,k:t.k,p:t.p,c:t.c,f:t.f,fi:t.fi,a})}
+ ST=[];cls();render()}
 /* WORKOUT */
 const rng=s=>{const a=s.split('-').map(Number);return[a[0],a[1]||a[0]]};
 const wkd=(k)=>{const d=S.days[k||cur];return d&&d.wk?d.wk:null};
@@ -177,7 +185,7 @@ function exApply0(rm){const n=$('#en').value.trim(),{mode,i}=EX;if(!rm&&!n){$('#
  if(mode!=='lib'){const sc=$('#esc').value,P=S.plan[dow()],d=S.days[cur],ed=a=>{if(rm)a.splice(i,1);else if(mode==='swap')a[i]=ent;else a.push(ent)};
   if(sc==='plan'){ed(P.ex);if(d&&d.px){ed(d.px);touch(cur)}touch('meta')}else{wk2();ed(S.days[cur].px);touch(cur)}}
  cls();render()}
-function libV(){const L=Object.entries(S.lib).sort((a,b)=>a[0]<b[0]?-1:1);LB=L.map(e=>e[0]);
+function libEx(){const L=Object.entries(S.lib).sort((a,b)=>a[0]<b[0]?-1:1);LB=L.map(e=>e[0]);
  return `<h3 style="margin-top:6px">Exercise library</h3><div class="card"><button class="pri" style="width:100%" onclick="exSheet('lib',0)">+ New exercise</button><small style="color:var(--mu);display:block;margin-top:8px">Tap an exercise to edit its default sets and reps. Swap exercises from the Workout tab.</small></div><div class="card">${L.map((e,n)=>`<div class="it" onclick="exSheet('lib',LB[${n}])"><div><b>${esc(e[1].n)}</b><br><small>${e[1].ty}${e[1].mu?' · '+e[1].mu:''} · ${e[1].s} × ${e[1].r}</small></div><button class="x" onclick="event.stopPropagation();libDel(${n})">×</button></div>`).join('')}</div>`}
 function libDel(n){undoable('Exercise removed from library',()=>{delete S.lib[LB[n]];touch('meta')});render()}
 /* UNDO + BACKUP NUDGE */
@@ -189,7 +197,7 @@ function undo(){if(!UD)return;const o=JSON.parse(UD);UD=null;$('#tt').className=
  const m1=JSON.stringify(metaO());for(const k of new Set(Object.keys(S.days).concat(Object.keys(o.days))))if(o.days[k]&&JSON.stringify(S.days[k])!==JSON.stringify(o.days[k])){o.days[k].u=Date.now();dirty.add(k)}
  const cur2=S;S=o;const m2=JSON.stringify(metaO());if(m1!==m2){S.mu=Date.now();dirty.add('meta')}persist();flush();render()}
 function delSet(i,j){const e=plan().ex[i],w=wk2(),a=w.ex[e[0]]||[];undoable('Set removed',()=>{if(j>=e[1])a.splice(j,1);else if(a[j])a[j]={};touch(cur)});render()}
-function bkBanner(){if(Object.keys(S.days).length<2||(S.lb&&Date.now()-S.lb<6048e5))return'';return `<div class="card" style="border-color:var(--wa)"><b>Back up your data</b><br><small>${S.lb?'Last backup '+Math.floor((Date.now()-S.lb)/864e5)+' days ago.':'You have not exported a backup yet.'} Save one file to Google Drive.</small><div class="row"><button class="sec" onclick="go('st')">Go to Backup</button></div></div>`}
+function bkBanner(){if(Object.keys(S.days).length<2||(Math.max(S.lb||0,DR.last||0)&&Date.now()-Math.max(S.lb||0,DR.last||0)<6048e5))return'';return `<div class="card" style="border-color:var(--wa)"><b>Back up your data</b><br><small>${(S.lb||DR.last)?'Last backup '+Math.floor((Date.now()-Math.max(S.lb||0,DR.last||0))/864e5)+' days ago.':'You have not exported a backup yet.'} Save one file to Google Drive.</small><div class="row"><button class="sec" onclick="go('st')">Go to Backup</button></div></div>`}
 /* PROGRESS */
 let PV={m:'w',o:0};
 const gkf=k=>{const G=goalsFor(k);return [1,2,4,5,6].includes(new Date(k+'T00:00').getDay())?G.kt:G.kr};
@@ -219,6 +227,110 @@ function prV(){const ds=pdays(PV.o),pd=pdays(PV.o-1),a=pst(ds),b=pst(pd),A=ds[0]
  ${gain.length?`<h3 style="margin-top:12px">Heavier than last ${PV.m==='w'?'week':'month'}</h3>${gain.map(x=>`<div class="it"><span>${esc(x[0])}</span><b>+${N(x[1])} kg</b></div>`).join('')}`:''}
  ${a.sks.length?`<h3 style="margin-top:12px">Skips</h3>${a.sks.map(x=>`<div class="it"><span><b>${x[0]}</b> · ${esc(x[1].r)}<br><small>${esc(x[1].t||'')}</small></span></div>`).join('')}`:''}</div>
  <h3>Body weight</h3><div class="card">${bw.length?`<div class="g2">${T('Start → end',bw[0]+' → '+bw[bw.length-1]+' kg')}${T('Change',(bw[bw.length-1]-bw[0]>0?'+':'')+N(bw[bw.length-1]-bw[0])+' kg')}</div>`:'<small style="color:var(--mu)">No weigh-ins in this period.</small>'}</div>`}
+/* FOOD LIBRARY + MEALS + DAY STRIP + AUTO BACKUP */
+let ST=[],LV='ex',FB=[];
+const FT=`oats|389,17,66,7,10
+milk|61,3.2,4.8,3.3,0
+chia|486,17,42,31,34
+egg white|52,11,0.7,0.2,0,pc,33
+egg|143,12.6,0.7,9.5,0,pc,50
+paneer|296,18,3.6,23,0
+greek yogurt|59,10,3.6,0.4,0
+curd/yogurt/dahi|61,3.5,4.7,3.3,0
+chicken|165,31,0,3.6,0
+fish|128,26,0,2.7,0
+tofu|76,8,1.9,4.8,0.3
+rice|130,2.7,28,0.3,0.4
+roti/chapati|297,9,50,7,10,pc,40
+bread|265,9,49,3.2,2.7,pc,30
+poha|130,2.5,23,3,1.5
+idli|130,4,28,0.4,1,pc,40
+dal|116,9,20,0.4,8
+chana/chickpea|164,8.9,27,2.6,7.6
+rajma|127,8.7,23,0.5,6.4
+soya chunk/soya|345,52,33,0.5,13
+whey|400,80,8,6,0,scoop,30
+banana|89,1.1,23,0.3,2.6,pc,120
+apple|52,0.3,14,0.2,2.4,pc,180
+dates/khajoor|282,2.5,75,0.4,8,pc,8
+potato|77,2,17,0.1,2.2,pc,150
+sweet potato|86,1.6,20,0.1,3,pc,130
+spinach|23,2.9,3.6,0.4,2.2
+broccoli|34,2.8,7,0.4,2.6
+almond|579,21,22,50,12.5,pc,1.2
+walnut|654,15,14,65,6.7,pc,4
+peanut butter|588,25,20,50,6
+peanut|567,26,16,49,8.5
+ghee|900,0,0,100,0
+oil|884,0,0,100,0
+sugar|387,0,100,0,0
+honey|304,0.3,82,0,0.2`;
+const FTB=FT.split('\n').map(l=>{const q=l.split('|'),z=q[1].split(',');return{k:q[0].split('/'),v:z.slice(0,5).map(Number),u:z[5]||'g',w:+z[6]||0}});
+function estF(t){t=t.toLowerCase();let f=null,fl=0;FTB.forEach(x=>x.k.forEach(k=>{if(k.length>fl&&new RegExp('\\b'+k+'(es|s)?\\b').test(t)){f=x;fl=k.length}}));if(!f)return null;
+ const m=t.match(/(\d+(?:\.\d+)?)\s*(kg|gms|gm|grams|gram|g|ml|l|pcs|pc|pieces|piece|tbsp|tsp|scoops|scoop)?\b/),n=m?parseFloat(m[1]):(f.u==='g'?100:1),u=(m&&m[2])||f.u;
+ const g=u==='kg'||u==='l'?n*1000:/^(pc|pcs|piece|pieces)$/.test(u)?n*(f.w||100):u==='tbsp'?n*15:u==='tsp'?n*5:/^scoops?$/.test(u)?n*(f.w||30):n,x=g/100,r=a=>Math.round(a*10)/10;
+ return{k:Math.round(f.v[0]*x),p:r(f.v[1]*x),c:r(f.v[2]*x),f:r(f.v[3]*x),fi:r(f.v[4]*x)}}
+function estFill(){const r=estF($('#fn').value);if(!r){alert('No estimate for that yet. Try “50 g oats”, “3 eggs”, “200 ml milk” or “2 roti”, or type the values yourself.');return}
+ for(const a in r)$('#f'+(a==='fi'?'i':a)).value=r[a]}
+function fmItem(){const n=$('#fn').value.trim(),v=id=>+$('#'+id).value||0,q=v('fq')||1;if(!n){$('#fn').focus();return null}
+ const f={k:v('fk'),p:v('fp'),c:v('fc'),f:v('ff'),fi:v('fi')},key=n.toLowerCase(),o=S.foods[key];
+ S.foods[key]=Object.assign({n},f,{cnt:(o?o.cnt:0)+1,last:Date.now()});touch('meta');
+ return{n,q,k:f.k*q,p:f.p*q,c:f.c*q,f:f.f*q,fi:f.fi*q}}
+function stageAdd(){const x=fmItem();if(!x)return;ST.push(x);['fn','fk','fp','fc','ff','fi'].forEach(i=>$('#'+i).value='');$('#fq').value=1;stgR();sug();$('#fn').focus()}
+function stgR(){const t=ST.reduce((a,x)=>({k:a.k+x.k,p:a.p+x.p,c:a.c+x.c,f:a.f+x.f,fi:a.fi+x.fi}),{k:0,p:0,c:0,f:0,fi:0});
+ $('#stg').innerHTML=ST.length?`<div class="card" style="margin:10px 0 0;padding:10px"><b>This meal so far</b>${ST.map((x,i)=>`<div class="it"><span>${esc(x.n)}${x.q!=1?' ×'+x.q:''} <small>${N(x.k)} kcal · ${N(x.p)}g P</small></span><button class="x" onclick="ST.splice(${i},1);stgR()">×</button></div>`).join('')}<small>Total: <b>${N(t.k)} kcal · P ${N(t.p)} · C ${N(t.c)} · F ${N(t.f)} · Fiber ${N(t.fi)}</b></small>${ST.length>1?`<label style="display:block;margin-top:8px">Combo name (saved so you can add this whole meal in one tap)<input id="cbn" value="${esc(ST.map(x=>x.n).join(' + '))}"></label>`:''}</div>`:''}
+function libV(){return `<div class="row" style="margin:0 0 10px"><button class="${LV==='ex'?'pri':'sec'}" onclick="LV='ex';render()">Exercises</button><button class="${LV==='fd'?'pri':'sec'}" onclick="LV='fd';render()">Foods</button></div>`+(LV==='ex'?libEx():foodsV())}
+function foodsV(){const L=Object.entries(S.foods).sort((a,b)=>b[1].cnt-a[1].cnt);FB=L.map(e=>e[0]);
+ return `<div class="card"><button class="pri" style="width:100%" onclick="foodSheet(-1)">+ New food</button><small style="color:var(--mu);display:block;margin-top:8px">Add a food once, then just type its first letters when logging. Combos you save from multi-item meals show up here too. Editing or deleting here never changes your past logs.</small></div><div class="card">${L.map((e,n)=>`<div class="it" onclick="foodSheet(${n})"><div><b>${esc(e[1].n)}</b><br><small>${N(e[1].k)} kcal · P ${N(e[1].p)} · C ${N(e[1].c)} · F ${N(e[1].f)} · Fiber ${N(e[1].fi)}</small></div><button class="x" onclick="event.stopPropagation();fdDel(${n})">×</button></div>`).join('')||'<small style="color:var(--mu)">No foods yet.</small>'}</div>`}
+function foodSheet(n){const e=n>=0?S.foods[FB[n]]:null;
+ $('#sh').innerHTML=`<div class="sc"><h3 style="margin-top:0">${e?'Edit food':'New food'}</h3><input id="fn" value="${e?esc(e.n):''}" placeholder="Name with amount, e.g. 50 g oats" autocomplete="off"><button class="link" onclick="estFill()">Estimate values from name</button>
+ <div class="g3">${[['fk','Calories','k'],['fp','Protein g','p'],['fc','Carbs g','c'],['ff','Fat g','f'],['fi','Fiber g','fi']].map(a=>`<label>${a[1]}<input id="${a[0]}" type="number" inputmode="decimal" step="any" value="${e?e[a[2]]:''}"></label>`).join('')}</div>
+ <small style="color:var(--mu)">Values for one serving. Estimates are approximate, so check them against the pack when you can.</small><div class="row"><button class="sec" onclick="cls()">Cancel</button><button class="pri" onclick="fdSave(${n})">Save</button></div></div>`;$('#sh').className='sh on'}
+function fdSave(n){const nm=$('#fn').value.trim();if(!nm){$('#fn').focus();return}const v=id=>+$('#'+id).value||0,k=nm.toLowerCase(),old=S.foods[n>=0?FB[n]:k];
+ if(n>=0&&FB[n]!==k)delete S.foods[FB[n]];
+ S.foods[k]={n:nm,k:v('fk'),p:v('fp'),c:v('fc'),f:v('ff'),fi:v('fi'),cnt:old?old.cnt:0,last:old?old.last:0};touch('meta');cls();render()}
+function fdDel(n){undoable('Food removed from library',()=>{delete S.foods[FB[n]];touch('meta')});render()}
+function wstrip(){const m=new Date(cur+'T00:00');m.setDate(m.getDate()-(m.getDay()+6)%7);
+ return '<div class="wst">'+[0,1,2,3,4,5,6].map(i=>{const x=new Date(m);x.setDate(m.getDate()+i);const k=iso(x),d=S.days[k],h=d&&((d.m&&d.m.length)||d.sk||(d.wk&&Object.keys(d.wk.ex).length));
+  return `<button class="dy${k===cur?' on':''}${k===today()?' td':''}" onclick="cur='${k}';render()"><small>${'MTWTFSS'[i]}</small><b>${x.getDate()}</b><i style="${h?'':'visibility:hidden'}"></i></button>`}).join('')+'</div>'}
+function note(m){const t=$('#tt');t.innerHTML=`<span>${esc(m)}</span>`;t.className='on';clearTimeout(ut);ut=setTimeout(()=>{t.className=''},6000)}
+function autoBk(){if(window.claude||Object.keys(S.days).length<2||(S.lb&&Date.now()-S.lb<6048e5))return;
+ try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='fitlog-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();S.lb=Date.now();persist();note('Weekly backup saved to your Downloads folder')}catch(e){}}
+/* GOOGLE DRIVE BACKUP (installed version only) */
+const GCID='1097144101023-m2ei0l7lqk0e82vhgc4bpebdqqrisrlp.apps.googleusercontent.com',GFOLDER='Fit Log Backups',DAPI='https://www.googleapis.com/drive/v3/',DUP='https://www.googleapis.com/upload/drive/v3/';
+let DR={},TOK=null,TEXP=0,DT,DMSG='',dbusy=false;
+try{DR=JSON.parse(localStorage.getItem('fitlog_drive')||'{}')}catch(e){DR={}}
+const drSave=()=>{try{localStorage.setItem('fitlog_drive',JSON.stringify(DR))}catch(e){}};
+function dsched(){clearTimeout(DT);DT=setTimeout(driveSync,30000)}
+function gLoad(){return new Promise((res,rej)=>{if(window.google&&google.accounts)return res();const e=document.createElement('script');e.src='https://accounts.google.com/gsi/client';e.onload=res;e.onerror=()=>rej(new Error('Could not load Google sign-in. Check your connection.'));document.head.appendChild(e)})}
+function gTok(){return gLoad().then(()=>new Promise((res,rej)=>{if(TOK&&Date.now()<TEXP)return res(TOK);
+ google.accounts.oauth2.initTokenClient({client_id:GCID,scope:'https://www.googleapis.com/auth/drive.file',
+  callback:r=>{if(r.error)return rej(new Error(r.error));TOK=r.access_token;TEXP=Date.now()+(r.expires_in-60)*1000;res(TOK)},
+  error_callback:e=>rej(new Error(e&&e.type||'sign-in popup was blocked'))}).requestAccessToken({prompt:''})}))}
+async function gj(url,opt){opt=opt||{};const t=await gTok();opt.headers=Object.assign({Authorization:'Bearer '+t},opt.headers||{});const r=await fetch(url,opt);if(!r.ok)throw new Error('Drive error '+r.status);return opt.raw?r:r.json()}
+async function gFolder(){if(DR.fid)return DR.fid;let j=await gj(DAPI+'files?fields=files(id)&q='+encodeURIComponent("name='"+GFOLDER+"' and mimeType='application/vnd.google-apps.folder' and trashed=false"));
+ if(j.files&&j.files[0])DR.fid=j.files[0].id;else{j=await gj(DAPI+'files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:GFOLDER,mimeType:'application/vnd.google-apps.folder'})});DR.fid=j.id}drSave();return DR.fid}
+async function gFind(name){const f=await gFolder(),j=await gj(DAPI+'files?fields=files(id)&q='+encodeURIComponent("name='"+name+"' and '"+f+"' in parents and trashed=false"));return j.files&&j.files[0]?j.files[0].id:null}
+async function gPut(name,data){const f=await gFolder(),id=await gFind(name);
+ if(id){await gj(DUP+'files/'+id+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body:data});return id}
+ const b='fl'+Date.now(),body='--'+b+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify({name,parents:[f]})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+data+'\r\n--'+b+'--';
+ return (await gj(DUP+'files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body})).id}
+async function driveSync(){if(!DR.on||dbusy||window.claude)return;if(!Object.keys(S.days).length&&!Object.keys(S.foods).length)return;dbusy=true;
+ try{const id=await gFind('fitlog-latest.json');
+  if(id){const o=await (await gj(DAPI+'files/'+id+'?alt=media',{raw:1})).json();
+   if(o.days&&Object.keys(o.days).length>Object.keys(S.days).length){DMSG='Your Drive backup has more days than this phone, so I did not overwrite it. Tap Restore from Drive first.';dbusy=false;if(tab==='st')render();return}}
+  const data=JSON.stringify(S);await gPut('fitlog-latest.json',data);
+  if(!DR.wk||Date.now()-DR.wk>6048e5){await gPut('fitlog-backup-'+today()+'.json',data);DR.wk=Date.now()}
+  DR.last=Date.now();drSave();DMSG=''}
+ catch(e){const m=String(e.message);if(m.includes('404')){DR.fid=null;drSave();DMSG='Drive folder not found. It will be recreated on the next sync.'}else{if(!DR.last)DR.on=false;drSave();DMSG='Not synced: '+m+'. Tap Sync now to try again.'}}
+ dbusy=false;if(tab==='st'||tab==='food')render()}
+function driveNow(){DR.on=true;drSave();DMSG='';driveSync();render()}
+async function driveRestore(){try{const id=await gFind('fitlog-latest.json');if(!id){alert('No backup in the Drive folder yet.');return}await imp(new Blob([await (await gj(DAPI+'files/'+id+'?alt=media',{raw:1})).text()]))}catch(e){alert('Restore failed: '+e.message)}}
+function driveOff(){try{if(TOK)google.accounts.oauth2.revoke(TOK)}catch(e){}TOK=null;DR={};drSave();DMSG='';render()}
+function driveCard(){if(window.claude)return'';
+ return `<h3>Google Drive backup</h3><div class="card"><p style="margin:0 0 6px">${DR.on?'Connected · folder “'+GFOLDER+'”':'Not connected'}</p><small style="color:var(--mu)">${DR.last?'Last upload: '+new Date(DR.last).toLocaleString():'Nothing uploaded yet'}${DMSG?'<br><b style="color:var(--wa)">'+esc(DMSG)+'</b>':''}</small>
+ <div class="row"><button class="pri" onclick="driveNow()">${DR.on?'Sync now':'Connect Google Drive'}</button>${DR.on?'<button class="sec" onclick="driveRestore()">Restore from Drive</button>':''}</div>${DR.on?'<button class="link" onclick="driveOff()">Disconnect</button>':''}
+ <small style="color:var(--mu);display:block">Keeps fitlog-latest.json up to date and adds one dated copy a week. After you tap Sync now, changes upload by themselves for about an hour; after that, tap once more.</small></div>`}
 /* WEIGHT */
 function bwV(){const ks=Object.keys(S.bw).sort(),l=ks.slice(-30),v=l.map(k=>S.bw[k]);let svg='';
  if(v.length>1){const mn=Math.min(...v)-.5,mx=Math.max(...v)+.5,pts=v.map((y,i)=>`${10+i*280/(v.length-1)},${100-(y-mn)/(mx-mn)*90}`).join(' ');svg=`<svg viewBox="0 0 300 110" style="width:100%"><polyline points="${pts}" fill="none" stroke="var(--ac)" stroke-width="2.5" stroke-linejoin="round"/></svg>`}
@@ -231,18 +343,18 @@ function delBw(k){undoable('Weight entry removed',()=>{delete S.bw[k];touch('met
 /* BACKUP + GOALS */
 function stV(){const g=goalsFor(today()),f=(k,l)=>`<label>${l}<input type="number" inputmode="decimal" value="${g[k]}" onchange="setGoal('${k}',this.value)"></label>`;
  return `<h3 style="margin-top:6px">Daily goals</h3><div class="card"><small style="color:var(--mu);display:block;margin-bottom:8px">Changes apply from today onward. Past days keep the goals they had.</small><div class="g2">${f('kt','Calories (lifting/interval days)')}${f('kr','Calories (rest/Zone 2)')}</div><div class="g3">${f('p','Protein g')}${f('c','Carbs g')}${f('f','Fat g')}</div><div class="g3">${f('fi','Fiber g')}</div></div>
- <h3>Your data</h3><div class="card"><p style="margin:0 0 8px">Every change is saved instantly on this phone${cloud?' and synced to your private cloud copy':''}. Days logged: <b>${Object.keys(S.days).length}</b> · Foods saved: <b>${Object.keys(S.foods).length}</b></p><small style="color:var(--mu)">Cloud: ${cloud} · Phone storage used: ${Math.round(JSON.stringify(S).length/1024)} KB of ~5,000 KB · Last backup: ${S.lb?new Date(S.lb).toLocaleDateString():"never"}</small>
+ ${driveCard()}<h3>Your data</h3><div class="card"><p style="margin:0 0 8px">Every change is saved instantly on this phone${cloud?' and synced to your private cloud copy':''}. Days logged: <b>${Object.keys(S.days).length}</b> · Foods saved: <b>${Object.keys(S.foods).length}</b></p><small style="color:var(--mu)">Cloud: ${cloud} · Phone storage used: ${Math.round(JSON.stringify(S).length/1024)} KB of ~5,000 KB · Last backup: ${S.lb?new Date(S.lb).toLocaleDateString():"never"}</small>
  <div class="row"><button class="pri" onclick="exp()">Export backup</button><button class="sec" onclick="$('#imf').click()">Import</button></div><input id="imf" type="file" accept=".json,application/json" style="display:none" onchange="imp(this.files[0])">
- <textarea id="bk" rows="3" style="display:none;margin-top:8px"></textarea><small style="color:var(--mu);display:block;margin-top:8px">Tip: export a backup file once a week and keep it in Google Drive.</small></div>`}
+ <textarea id="bk" rows="3" style="display:none;margin-top:8px"></textarea><small style="color:var(--mu);display:block;margin-top:8px">Tip: the installed app saves a backup file to your phone’s Downloads folder every 7 days when you open it. Point a Drive sync app (FolderSync or Autosync) at that folder, filtered to “fitlog-backup-*.json”, to copy it into your Drive folder.</small></div>`}
 async function exp(){const s=JSON.stringify(S);try{const d=await claude.use('downloads');if(d){await d.save({filename:'fitlog-backup-'+today()+'.json',data:s});S.lb=Date.now();persist();render();return}}catch(e){if(e&&e.code==='declined')return}
  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));a.download='fitlog-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();S.lb=Date.now();persist();render();return}catch(e){}const t=$('#bk');t.style.display='block';t.value=s;t.select();alert('Download unavailable here. Copy the text from the box and store it safely.')}
 async function imp(f){if(!f)return;try{const o=JSON.parse(await f.text());if(!o.days)throw 0;const sn=JSON.stringify(S);
  for(const k in o.days)if(!S.days[k]||(o.days[k].u||0)>(S.days[k].u||0)){S.days[k]=o.days[k];dirty.add(k)}
  S.foods=Object.assign({},o.foods,S.foods);S.bw=Object.assign({},o.bw,S.bw);S.lib=Object.assign({},o.lib,S.lib);touch('meta');render();UD=sn;toast('Backup imported and merged')}catch(e){alert('That file is not a valid backup.')}}
 function render(){$('#m').innerHTML=tab==='food'?foodV():tab==='wk'?wkV():tab==='bw'?bwV():tab==='lib'?libV():tab==='pr'?prV():stV();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab))}
-load();render();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+load();render();autoBk();if(!window.claude){gLoad().catch(()=>{});if(DR.on)setTimeout(driveSync,2500)}try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 setInterval(()=>{if(dirty.size)flush()},60000);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){const t=today();if(t!==LT){if(cur===LT)cur=t;LT=t}if(dirty.size)flush();render()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){const t=today();if(t!==LT){if(cur===LT)cur=t;LT=t}if(dirty.size)flush();autoBk();if(DR.on)driveSync();render()}});
 (async()=>{try{if(!window.claude)throw 0;const u=await claude.use('user'),id=u&&await u.id(),db=await claude.use('db');
  if(db&&id){col=db.collection('data/users/'+id);await pull();cloud='synced ✓'}else cloud='off (this device only)'}catch(e){cloud='off (this device only)'}render()})();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
