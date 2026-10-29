@@ -349,13 +349,49 @@ function stV(){const g=goalsFor(today()),f=(k,l)=>`<label>${l}<input type="numbe
 async function exp(){const s=JSON.stringify(S);try{const d=await claude.use('downloads');if(d){await d.save({filename:'fitlog-backup-'+today()+'.json',data:s});S.lb=Date.now();persist();render();return}}catch(e){if(e&&e.code==='declined')return}
  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));a.download='fitlog-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();S.lb=Date.now();persist();render();return}catch(e){}const t=$('#bk');t.style.display='block';t.value=s;t.select();alert('Download unavailable here. Copy the text from the box and store it safely.')}
 const emptyDay=d=>!d||(!(d.m&&d.m.length)&&!Object.keys((d.wk&&d.wk.ex)||{}).length&&!(d.wk&&(d.wk.note||d.wk.c)));
-async function imp(f){if(!f)return;try{let o=JSON.parse(await f.text());if(o&&o.S&&o.S.days)o=o.S;if(!o||typeof o.days!=='object'||!o.days)throw 0;const sn=JSON.stringify(S);let nd=0,up=0;
- for(const k in o.days){const a=S.days[k],b=o.days[k];if(!b||typeof b!=='object')continue;
-  if(!a||emptyDay(a)||(b.u||0)>(a.u||0)){if(!a)nd++;else up++;if(!b.m)b.m=[];if(!b.wk)b.wk={ex:{},note:'',c:''};b.u=b.u||Date.now();S.days[k]=b;dirty.add(k)}}
- S.foods=Object.assign({},o.foods,S.foods);S.bw=Object.assign({},o.bw,S.bw);S.lib=Object.assign({},o.lib,S.lib);
- if((o.mu||0)>(S.mu||0)||!S.mu){if(o.goals)S.goals=o.goals;if(o.plan)S.plan=o.plan}
- const gm={};(S.gh||[]).concat(o.gh||[]).forEach(e=>gm[e.d]=e);S.gh=Object.keys(gm).sort().map(d=>gm[d]);
- touch('meta');render();UD=sn;toast('Imported '+nd+' new day'+(nd===1?'':'s')+(up?', updated '+up:'')+' · '+Object.keys(o.foods||{}).length+' foods')}catch(e){alert('That file is not a valid backup.')}}
+function mealKey(x){return JSON.stringify(['n','q','k','p','c','f','fi','a'].map(k=>x&&x[k]!==undefined?x[k]:null))}
+function mergeMeals(current, incoming){
+ const out=Array.isArray(current)?current.slice():[],counts={};
+ out.forEach(x=>{const k=mealKey(x);counts[k]=(counts[k]||0)+1});
+ const seen={};(Array.isArray(incoming)?incoming:[]).forEach(x=>{const k=mealKey(x);seen[k]=(seen[k]||0)+1;if(seen[k]>(counts[k]||0)){out.push(x);counts[k]=(counts[k]||0)+1}});
+ return out;
+}
+function mergeDay(current, incoming){
+ const a=current&&typeof current==='object'?current:{},b=incoming&&typeof incoming==='object'?incoming:{};
+ const out=Object.assign({},b,a);
+ out.m=mergeMeals(a.m,b.m);
+ out.px=Array.isArray(a.px)&&a.px.length?a.px:(Array.isArray(b.px)?b.px:[]);
+ const aw=a.wk&&typeof a.wk==='object'?a.wk:{},bw=b.wk&&typeof b.wk==='object'?b.wk:{};
+ const ax=aw.ex&&typeof aw.ex==='object'?aw.ex:{},bx=bw.ex&&typeof bw.ex==='object'?bw.ex:{};
+ const ex={};
+ for(const name of new Set(Object.keys(bx).concat(Object.keys(ax)))){
+  const old=Array.isArray(ax[name])?ax[name]:[],inc=Array.isArray(bx[name])?bx[name]:[],n=Math.max(old.length,inc.length),sets=[];
+  for(let i=0;i<n;i++){const iv=inc[i]&&typeof inc[i]==='object'?inc[i]:{},ov=old[i]&&typeof old[i]==='object'?old[i]:{};sets[i]=Object.assign({},iv,ov);for(const k in iv)if((sets[i][k]===''||sets[i][k]===null||sets[i][k]===undefined)&&iv[k]!==''&&iv[k]!==null&&iv[k]!==undefined)sets[i][k]=iv[k];}
+  ex[name]=sets;
+ }
+ out.wk=Object.assign({},bw,aw,{ex,note:aw.note||bw.note||'',c:(aw.c!==''&&aw.c!==undefined)?aw.c:(bw.c||'')});
+ if(!out.sk)out.sk=b.sk;
+ out.u=Math.max(+a.u||0,+b.u||0);
+ return out;
+}
+async function imp(f){if(!f)return;try{
+ let o=JSON.parse(await f.text());if(o&&o.S&&o.S.days)o=o.S;
+ if(!o||!o.days||typeof o.days!=='object'||Array.isArray(o.days))throw new Error('Missing daily records');
+ const sn=JSON.stringify(S),sourceDays=Object.keys(o.days),beforeDays=Object.keys(S.days).length;let added=0,merged=0,mealAdded=0;
+ for(const k of sourceDays){const b=o.days[k];if(!b||typeof b!=='object')continue;
+  const a=S.days[k],wasMeals=(a&&Array.isArray(a.m)?a.m.length:0),next=mergeDay(a,b);
+  const changed=JSON.stringify(a||null)!==JSON.stringify(next);
+  if(!a||emptyDay(a))added++;else if(changed)merged++;
+  mealAdded+=Math.max(0,(next.m||[]).length-wasMeals);
+  if(changed){S.days[k]=next;dirty.add(k)}
+ }
+ S.foods=Object.assign({},o.foods||{},S.foods||{});S.bw=Object.assign({},o.bw||{},S.bw||{});S.lib=Object.assign({},o.lib||{},S.lib||{});
+ if((+o.mu||0)>(+S.mu||0)||!S.mu){if(o.goals)S.goals=o.goals;if(o.plan)S.plan=o.plan;S.mu=Math.max(+S.mu||0,+o.mu||0)}
+ const gm={};(S.gh||[]).concat(Array.isArray(o.gh)?o.gh:[]).forEach(e=>{if(e&&e.d)gm[e.d]=e});S.gh=Object.keys(gm).sort().map(d=>gm[d]);
+ touch('meta');render();UD=sn;
+ toast('Imported backup: '+sourceDays.length+' dates found · '+added+' new dates · '+merged+' merged · '+mealAdded+' meals added');
+ if(sourceDays.length===0)alert('This backup contains no daily records.');
+ }catch(e){alert('Import failed: '+(e&&e.message?e.message:'This file is not a valid Fit Log backup.'))}}
 function render(){$('#m').innerHTML=tab==='food'?foodV():tab==='wk'?wkV():tab==='bw'?bwV():tab==='lib'?libV():tab==='pr'?prV():stV();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab))}
 load();render();autoBk();if(!window.claude){gLoad().catch(()=>{});if(DR.on)setTimeout(driveSync,2500)}try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 setInterval(()=>{if(dirty.size)flush()},60000);
